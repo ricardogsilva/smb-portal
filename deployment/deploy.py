@@ -23,16 +23,6 @@ from typing import Union
 logger = logging.getLogger(__name__)
 
 
-@contextmanager
-def cd(new_dir):
-    previous_dir = os.getcwd()
-    os.chdir(os.path.expanduser(new_dir))
-    try:
-        yield
-    finally:
-        os.chdir(previous_dir)
-
-
 def _execute_command(cmd, working_dir, timeout=None, env=None):
     process_environment = os.environ.copy()
     process_environment.update(env if env is not None else {})
@@ -55,26 +45,26 @@ def _execute_command(cmd, working_dir, timeout=None, env=None):
         logger.error(exc.stderr)
 
 
-def execute_git_command(base_dir: str, cmd: str, timeout: Union[int, None]=3):
+def execute_git_command(cmd: str, base_dir: Path, timeout: Union[int, None]=3):
     return _execute_command(
         cmd="git {}".format(cmd) if not cmd.startswith("git") else cmd,
-        working_dir=base_dir,
+        working_dir=str(base_dir),
         timeout=timeout
     )
 
 
-def execute_django_command(cmd: str, project_dir:str, python_command: str,
+def execute_django_command(cmd: str, project_dir: Path, python_command: str,
                            env: Union[dict, None]):
     return _execute_command(
         cmd="{python} manage.py {cmd}".format(python=python_command, cmd=cmd),
-        working_dir=project_dir,
+        working_dir=str(project_dir),
         env=env
     )
 
 
-def execute_pip_command(cmd: str, working_dir: str, pip_command: str):
+def execute_pip_command(cmd: str, working_dir: Path, pip_command: str):
     command = "{pip} {cmd}".format(pip=pip_command, cmd=cmd)
-    return _execute_command(cmd=command, working_dir=working_dir)
+    return _execute_command(cmd=command, working_dir=str(working_dir))
 
 
 def get_env_vars(path):
@@ -89,28 +79,26 @@ def get_env_vars(path):
 
 
 def deploy_to_dev(repo_base: Path, args):
+    print("Deploying to `dev` environment...")
     git_remote = "origin"
     git_branch = "dev"
-    print("Deploying to `dev` environment...")
-    logger.debug("Loading environment variables...")
     env_vars = get_env_vars(args.env_file)
-    logger.debug("env_vars: {}".format(env_vars))
+    logger.debug("Loaded environment variables: {}".format(env_vars))
     logger.debug("Pulling latest code from the `dev` branch...")
-    # execute_git_command(
-    #     str(repo_base), "checkout {branch}".format(branch=git_branch))
-    # execute_git_command(
-    #     str(repo_base),
-    #     "pull {remote} {branch}".format(remote=git_remote, branch=git_branch),
-    #     timeout=None
-    # )
+    execute_git_command("checkout {}".format(git_branch), repo_base)
+    execute_git_command(
+        "pull {remote} {branch}".format(remote=git_remote, branch=git_branch),
+        repo_base,
+        timeout=None
+    )
     logger.debug("Updating dependencies...")
-    # execute_pip_command(
-    #     cmd="install -r production.txt",
-    #     working_dir=str(repo_base / "requirements"),
-    #     pip_command=args.pip_command
-    # )
+    execute_pip_command(
+        "install -r production.txt",
+        repo_base / "requirements",
+        pip_command=args.pip_command
+    )
     logger.debug("Processing django migrations...")
-    django_project_dir = str(repo_base / "smbportal")
+    django_project_dir = repo_base / "smbportal"
     execute_django_command(
         "migrate", django_project_dir, args.python_command, env=env_vars)
     logger.debug("Updating translations...")
