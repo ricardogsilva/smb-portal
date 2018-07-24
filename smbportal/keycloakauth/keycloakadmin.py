@@ -165,12 +165,10 @@ class KeycloakApiClient(object):
             token_endpoint, self.client_id, self.refresh_token)
         self._set_tokens(token_json)
 
-    def make_request(self, api_endpoint, http_method="get", **kwargs):
-        url = "{base_url}/auth/admin/realms/{realm}/{end}".format(
-            base_url=self.base_url,
-            realm=self.realm,
-            end=api_endpoint[1:] if api_endpoint[0] == "/" else api_endpoint
-        )
+    def make_request(self, api_endpoint=None, http_method="get", **kwargs):
+        url = "{base_url}/auth/admin/realms/".format(base_url=self.base_url)
+        if api_endpoint is not None:
+            url += api_endpoint[1:] if api_endpoint[0] == "/" else api_endpoint
         request_kwargs = kwargs.copy()
         headers = {
             "Authorization": self.authorization_header
@@ -207,7 +205,7 @@ class KeycloakManager(object):
     def get_groups(self):
         """Get representation of groups associated with the keycloak realm"""
         response = self.keycloak_client.make_request(
-            "/groups"
+            "{realm}/groups".format(realm=self.keycloak_client.realm)
         )
         return response.json()
 
@@ -216,7 +214,8 @@ class KeycloakManager(object):
 
     def set_user_properties(self, user_id, **user_properties) -> int:
         response = self.keycloak_client.make_request(
-            "/users/{id}".format(id=user_id),
+            "{realm}/users/{id}".format(
+                realm=self.keycloak_client.realm, id=user_id),
             http_method="put",
             json=user_properties,
             headers={
@@ -227,13 +226,14 @@ class KeycloakManager(object):
 
     def get_user_by_id(self, user_id):
         response = self.keycloak_client.make_request(
-            "/users/{id}".format(id=user_id)
+            "{realm}/users/{id}".format(
+                realm=self.keycloak_client.realm, id=user_id)
         )
         return response.json()
 
     def get_user_details(self, username):
         users_response = self.keycloak_client.make_request(
-            "/users",
+            "{realm}/users".format(realm=self.keycloak_client.realm),
             params={
                 "username": username
             }
@@ -246,7 +246,8 @@ class KeycloakManager(object):
 
     def get_user_groups(self, user_id):
         response = self.keycloak_client.make_request(
-            "/users/{id}/groups".format(id=user_id))
+            "{realm}/users/{id}/groups".format(
+                realm=self.keycloak_client.realm, id=user_id))
         return response.json()
 
     def add_user_to_group(self, user_id: str, group_path: str):
@@ -254,7 +255,8 @@ class KeycloakManager(object):
         groups = self.get_groups()
         group_id = [g["id"] for g in groups if g["path"] == group_path][0]
         response = self.keycloak_client.make_request(
-            "/users/{uid}/groups/{gid}".format(uid=user_id, gid=group_id),
+            "{realm}/users/{uid}/groups/{gid}".format(
+                realm=self.keycloak_client.realm, uid=user_id, gid=group_id),
             http_method="put",
         )
         return response.status_code
