@@ -21,10 +21,10 @@ python:
   - "3.6"
 
 env:
-  - DJANGO_SETTINGS_MODULE=base.settings.dev
-  - DJANGO_ALLOWED_HOSTS=*
-  - DJANGO_DEBUG=true
-  - DJANGO_SECRET_KEY=smb_ci
+  - DJANGO_SETTINGS_MODULE="base.settings.dev"
+  - DJANGO_ALLOWED_HOSTS="*"
+  - DJANGO_DEBUG="true"
+  - DJANGO_SECRET_KEY="smb_ci"
   - DJANGO_DATABASE_URL="postgis://smb_ci:smb_ci@10.0.1.66:5432/smb_ci"
   - DJANGO_PUBLIC_URL="http://127.0.0.1:8000"
   - DJANGO_EMAIL_HOST_USER=
@@ -34,17 +34,9 @@ env:
   - DJANGO_KEYCLOAK_CLIENT_ID=demoapp
   - KEYCLOAK_ADMIN_USERNAME="realmboss1"
   - KEYCLOAK_ADMIN_PASSWORD="123456"
-  - KEYCLOAK_VERSION=4.1.0.Final
-  - KEYCLOAK_ADMIN=admin
-  - KEYCLOAK_PASSWORD=123456
 
 before_script:
-  - wget https://downloads.jboss.org/keycloak/${KEYCLOAK_VERSION}/keycloak-${KEYCLOAK_VERSION}.tar.gz
-  - tar -xvzf keycloak-${KEYCLOAK_VERSION}.tar.gz
-  - cd keycloak-${KEYCLOAK_VERSION}
-  - ./bin/add-user-keycloak.sh -r master -u ${KEYCLOAK_ADMIN} -p ${KEYCLOAK_PASSWORD}
-  # launch keycloak in background and import the realm config
-  - ./bin/standalone.sh -Dkeycloak.migration.action=import -Dkeycloak.migration.provider=singleFile -Dkeycloak.migration.file=$HOME/tests/data/keycloak-demo-realm.json -Dkeycloak.migration.realmName=demo
+  - bash bin/travis-install-keycloak.sh
   - psql --user=postgres --command="CREATE USER smb_ci WITH SUPERUSER PASSWORD 'smb_ci'"
   - psql --user=postgres --command="CREATE DATABASE smb_ci WITH OWNER smb_ci"
   - psql --user=postgres --dbname=smb_ci --command="CREATE EXTENSION postgis"
